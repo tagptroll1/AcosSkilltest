@@ -1,52 +1,58 @@
 <script>
 	import Whiteboard from "./components/Whiteboard.svelte";
 	import axios from "axios";
+    axios.defaults.baseURL = 'http://localhost:5000';
 
-	let token; 
+	let response = init(); 
 	let goToRegister = false;
 	let goToLogin = false;
 	let registerMsg = "";
+	let userId;
 
-	const user = {
-		email: "tae1s1a1t@hotmail.com", 
-		username: "tesa21a1ter", 
-		password: "password1"
-	}
-	const createPoint = "http://localhost:5000/user/register";
-	const authPoint = "http://localhost:5000/user/authenticate";
+	const createPoint = "/user/register";
+	const authPoint = "/user/authenticate";
 
-	async function getToken() {
+	async function init() { return null}
+
+	async function requestToken() {
+		const user = validateForm("login");
 		try {
-			token = axios.post(authPoint, user)
+			
+			const r = await axios.post(authPoint, user)
+			main();
+			console.log(r);
+			
+			return r
 		} catch (error) {
+			login();
 			throw new Error("Could not authenticate user")
 		}
 	}
 
-	async function validateForm(e) {
-		e.preventDefault();
-		const Email = document.forms["register"]["email"].value;
-		const Username = document.forms["register"]["username"].value;
-		const Password = document.forms["register"]["password"].value;
-		const user1 = {
-			Email,
-			Username,
-			Password
-		}
+	async function registerUser() {
+		const user = validateForm("register", e);
+		console.log(user);
+		
 		try {
-			await axios.post(createPoint, user1);
-			alert("Account created!")
-			goToRegister = false;
-		} catch (error) {
-			registerMsg = "Account already exists!"
+			await axios.post(createPoint, user);
+			console.log("worked");
 			
-			goToRegister = true
+			alert("Account created!")
+			main();
+		} catch (error) {
+			console.log(error);
+			register()
+			registerMsg = "Account already exists!"
 		}
 	}
 
-	function loginForm(e) {
-		e.preventDefault();
-
+	function validateForm(formname) {
+		const user = {}
+		if (formname == "register")
+			user.Email = document.forms[formname]["email"].value;
+		user.Username = document.forms[formname]["username"].value;
+		user.Password = document.forms[formname]["password"].value;
+		return user;
 	}
 
 	function register() {
@@ -72,13 +78,15 @@
 	color: red;
 }
 </style>
+	<Whiteboard username={"ttt"} id={1} token={"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IjEiLCJuYmYiOjE1NjA0NTU3MzQsImV4cCI6MTU2MTA2MDUzNCwiaWF0IjoxNTYwNDU1NzM0fQ._pOkcKstj1JA67wFr-D6gN7Q28ghr8AyrNHPt9SJM2s"}/>
 
-{#if token}
-	<Whiteboard token={token}/>
-{:else}
-	{#if goToRegister}
+{#await response then resp}
+	{#if resp != null}
+		<Whiteboard {...resp.data}/>
+	{:else}
+		{#if goToRegister}
 		<p class="register-msg">{registerMsg}</p>
-		<form name="register">
+		<form name="register" on:submit|preventDefault={registerUser}>
 			<label for="email">Email</label>
 			<input type="text" placeholder="Enter Email" name="email" required>
 
@@ -86,10 +94,10 @@
 			<input type="text" placeholder="Enter Username" name="username" required>
 
 			<label for="password">Password</label>
-			<input type="text" placeholder="Enter Password" name="password" required>			
+			<input type="password" placeholder="Enter Password" name="password" required>			
 			
 			<br>
-			<button on:click={validateForm}>Submit</button>
+			<button type="submit">Submit</button>
 			<br>
 			<p>Already have an account? <button on:click={login}>Sign in</button></p> 
 			<br>
@@ -97,18 +105,15 @@
 		</form>
 	{:else if goToLogin}
 		<p class="register-msg">{registerMsg}</p>
-		<form name="login">
-			<label for="email">Email</label>
-			<input type="text" placeholder="Enter Email" name="email" required>
-
+		<form name="login" on:submit|preventDefault="{()=> response = requestToken()}">
 			<label for="username">Username</label>
 			<input type="text" placeholder="Enter Username" name="username" required>
 
 			<label for="password">Password</label>
-			<input type="text" placeholder="Enter Password" name="password" required>			
+			<input type="password" placeholder="Enter Password" name="password" required>			
 			
 			<br>
-			<button on:click={loginForm}>Submit</button>
+			<button type="submit">Login</button>
 			<br>
 			<p><button on:click={register}>Register</button></p> 
 			<br>
@@ -118,5 +123,9 @@
 		<button on:click={login}>Login</button>
 		<button on:click={register}>Register</button>
 	{/if}
-{/if}
+	{/if}
+{:catch err}
+	<p>{err}</p>
+{/await}
+
 
