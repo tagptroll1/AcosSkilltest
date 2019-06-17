@@ -1,28 +1,20 @@
 <script>
 	import { spring } from 'svelte/motion';
     import {pannable} from "../utils/pannable";
-    import axios from "axios";
-    export let id;
-    export let whiteboard;
-    export let todo;
-    export let color;
-    export let x;
-    export let y;
-    export let setXY;
+    import selectedPostits from "../stores/selectedPostits";
 
-    async function updateCoords(){
-        try {
-            await axios.put("http://localhost:5000/postit", {
-                X:$coords.x, Y:$coords.y, Color:color, Whiteboard:whiteboard, Id:id, Todo:todo
-            })
-            console.log("note update ok");
-            
-        } catch (error) {
-            console.error("note uhoh", error);
-        }
+
+    export let axios;
+    export let postit;
+    let putRequest;
+    let allowToSend = false;
+
+    function updateCoords(event){
+        postit.x = $coords.x + event.detail.dx;
+        postit.y = $coords.y + event.detail.dy;
     }
 
-	const coords = spring({ x, y }, {
+	const coords = spring({ x: postit.x, y:postit.y }, {
 		stiffness: 0.7,
 		damping: 0.7
 	});
@@ -32,20 +24,49 @@
 			x: $coords.x + event.detail.dx,
 			y: $coords.y + event.detail.dy
         }));
-        setXY($coords.x,$coords.y);
-	}
+        updateCoords(event);
+    }
+    
+    async function setAllowSend(inp){
+        allowToSend = inp;
+    }
 
-	function handlePanEnd(event) {
-        updateCoords()
-	}
+    async function putPostit() {
+        if (putRequest === undefined || allowToSend) {
+            await setAllowSend(false);
+            try {
+                putRequest = await axios.put("http://localhost:5000/postit", {
+                    ...postit,
+                    todo: {...postit.todo},
+                    x: Number.parseInt(postit.x),
+                    y: Number.parseInt(postit.y)
+                })
+            } catch (err) {
+                console.error(err)
+            }
+            
+            if (putRequest.status == 200)
+                await setAllowSend(true);
+        }
+    }
+
+    function deleteNote(){
+        console.log("boop");
+        try {
+            axios.delete(`http://localhost:5000/postit/${postit.id}`)
+            selectedPostits.set($selectedPostits.filter(p => p.id !== postit.id))
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
 </script>
 
 <style>
     article{
         position: absolute;
-        background-color: #ffffe0;
         width: 200px;
-        min-height: 200px;
+        min-height: 170px;
         z-index: 2;
 
         top: 100px;
@@ -55,10 +76,20 @@
 
     }
 
-    input {
+
+    input[type="text"] {
         width: 100%;
         border: none;
         background-color: #f5f5b0;
+        margin: 0;
+    }
+
+    button{
+        border: unset;
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background-color: transparent;
     }
 
     input:focus {
@@ -70,32 +101,54 @@
     }
 
     #content{
-        min-height: 130px;
+        min-height: 110px;
         height: 75%;
         width: 100%;
-        background-color: inherit;
         border: none;
         resize: none;
         overflow: hidden;
-        padding: 0 10px;
+        padding: 10px 10px;
     }
+
+    input[type="checkbox"] {
+        display: inline-block;
+        margin-left: 20px;
+    }
+    label {
+        display: inline;
+        max-width: 80%;
+    }
+
 </style>    
 
 <article
     use:pannable
 	on:panmove={handlePanMove}
-	on:panend={handlePanEnd}
-    	style="transform:translate({$coords.x}px,{$coords.y}px)"
+	on:panend={putPostit}
+    	style="transform:translate({$coords.x}px,{$coords.y}px); background-color: {postit.color};"
 >
     <h3>
-        <input id="title" bind:value={todo.title} type="text"/> 
+        <input 
+            id="title" 
+            bind:value={postit.todo.title} 
+            on:submit={putPostit}
+            type="text"/> 
     </h3>
+    <button on:click={deleteNote}>❌</button>
     <textarea 
         id="content" 
-        bind:value={todo.content} 
+        bind:value={postit.todo.content}
+        on:submit={putPostit}
+        style="background-color: {postit.color};"
         type="text" 
     />
-    <input name="done" type="checkbox" bind:checked={todo.finished}/>
+    <input 
+        id="checkbox" 
+        name="done" 
+        type="checkbox" 
+        bind:checked={postit.todo.finished}
+        on:change={putPostit}
+    />
     <label for="done">Finished?</label>
 
 </article>

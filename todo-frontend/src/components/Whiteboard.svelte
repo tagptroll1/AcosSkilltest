@@ -1,66 +1,33 @@
 <script>
+    import whiteboards from "../stores/allWhiteboards";
+    import WhiteboardSelector from "./WhiteboardSelector.svelte";
+    import WhiteboardPostits from "./WhiteboardPostits.svelte";
+    import selected from "../stores/selectedWhiteboard";
+    import WhiteboardPopup from "./WhiteboardPopup.svelte";
+
     export let token;
     export let id;
     export let username;
+    export let axios;
 
-    import {onMount} from "svelte";
-    import axios from "axios";
+    const getBoardsURL = `http://localhost:5000/whiteboard/user/${id}`;
+
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.headers.post['Content-Type'] = 'application/json';
 
-    import CreateWhiteboardPopup from "./WhiteboardPopup.svelte";
-    import Postit from "./Postit.svelte";
-   
+    let boards = getWhiteBoards();
 
-    const allBoardsEndpoint = "whiteboard/user/"+id;
-    let showCreation = false;
-    let showNewPostit = false;
-    let allBoards = getAllBoards();;
-    let selected = allBoards? allBoards[0]: []
-
-
-    async function getAllBoards() {
-        const resp = await axios.get(allBoardsEndpoint);
-        const json = resp.data;
-
-        if (resp.status == 200) {
-            return json;
-        } else {
-            console.error(resp);
+    async function getWhiteBoards(){
+        try {
+            const res = await axios.get(getBoardsURL);
+            $whiteboards = res.data;
+            return res
             
-            throw new Error(resp);
+        } catch(error) {
+            throw new Error(error.message);
         }
     }
 
-
-    function createWhiteboard(e){
-        showCreation = true;
-    }
-
-    function handleChange() {
-
-    }
-
-    async function newPostit(){
-        console.log("new!")
-        const newNote = {
-            id: null,
-            todo:{
-                title:"New postit",
-                created: Date.now(),
-                content: "",
-                finished: false
-            },
-            whiteboard: {
-                id:selected.id
-            },
-            color: "#ffffe0",
-            x: 100,
-            y: 100
-        }
-        selected.postits.push(newNote)
-        allBoards = new Promise((resolve, reject) => resolve(allBoards))
-    }
 </script>
 <style>
 
@@ -71,49 +38,21 @@ section{
     height: 500px;
 }
 
-select{
-    padding-left: 10px;
-    padding-top: 5px;
-    width: 100%;
-    height: 50px;
-    background-color: lightskyblue;
-}
+
 </style>
 
 <section>
-    {#if showCreation}
-        <CreateWhiteboardPopup 
-            {id}
-            setShow="{() => showCreation=false}" 
-            triggerReload="{() => allBoards=getAllBoards()}"
-        />
-    {/if}
-    {#if allBoards !== undefined}
-        {#await allBoards}
-            <p>Loading boards...</p>
-        {:then boards}
-            <select bind:value={selected} on:change={handleChange}>
-                {#each boards as board}
-                    <option value={board}>{board.title}</option>
-                {/each}
-                    <option on:click={createWhiteboard}> + New whiteboard</option>
-            </select>
-
-            {#if selected !== undefined}
-                {#await selected then selec}
-                {#each selec.postits as postit}
-                    <Postit {...postit} setXY="{(x,y) => {postit.x=x;postit.y=y}}"/>
-                {/each}
-                {/await}
-            {/if}
-            <button on:click={newPostit}>New Postit</button>
-        {:catch err}
-            {#if err.message.includes("404")}
+    {#await boards}
+        Loading whiteboards...
+    {:then result}
+        <WhiteboardSelector />
+        <WhiteboardPostits {id} {axios}/>
+    {:catch err}
+        {#if err.message.includes("404")}
                 <p>No whiteboards found.</p>
-                <button on:click={createWhiteboard}>Create one!</button>
+                <WhiteboardPopup {id} setShow={getWhiteBoards}></WhiteboardPopup>
             {:else}
                 Something went wrong: <br/>{err.message}
             {/if}
-        {/await}
-    {/if}
+    {/await}
 </section>
