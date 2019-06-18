@@ -7,6 +7,7 @@
     export let axios;
     export let postit;
     let putRequest;
+    let deleted = false;
     let allowToSend = false;
 
     function updateCoords(event){
@@ -50,10 +51,13 @@
         }
     }
 
-    function deleteNote(){
+    async function deleteNote(){
         console.log("boop");
         try {
-            axios.delete(`http://localhost:5000/postit/${postit.id}`)
+            await axios.delete(`http://localhost:5000/postit/${postit.id}`)
+            deleted = true;
+            console.log($selectedPostits.filter(p => p.id !== postit.id));
+            
             selectedPostits.set($selectedPostits.filter(p => p.id !== postit.id))
         } catch (err) {
             console.error(err)
@@ -124,21 +128,21 @@
 <article
     use:pannable
 	on:panmove={handlePanMove}
-	on:panend={putPostit}
+	on:panend={deleted? ()=>{}: putPostit}
     	style="transform:translate({$coords.x}px,{$coords.y}px); background-color: {postit.color};"
 >
     <h3>
         <input 
             id="title" 
             bind:value={postit.todo.title} 
-            on:submit={putPostit}
+            on:submit={deleted? ()=>{}: putPostit}
             type="text"/> 
     </h3>
     <button on:click={deleteNote}>❌</button>
     <textarea 
         id="content" 
         bind:value={postit.todo.content}
-        on:submit={putPostit}
+        on:submit={deleted? ()=>{}: putPostit}
         style="background-color: {postit.color};"
         type="text" 
     />
@@ -147,7 +151,7 @@
         name="done" 
         type="checkbox" 
         bind:checked={postit.todo.finished}
-        on:change={putPostit}
+        on:change={deleted? ()=>{}: putPostit}
     />
     <label for="done">Finished?</label>
 

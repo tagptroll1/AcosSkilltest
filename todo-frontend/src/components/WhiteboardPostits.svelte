@@ -8,11 +8,11 @@
 
 
     async function newPostit(){
-        console.log($selected)
+        console.log(new Date(Date.now()).toISOString())
         const newNote = {
             todo:{
                 title: "New postit",
-                created: Date.now().toString(),
+                created: new Date(Date.now()).toISOString(),
                 content: " ",
                 finished: false
             },

@@ -4,7 +4,7 @@
 	import currentUser from "./stores/currentUser";
 	import axios from "axios";
     axios.defaults.baseURL = 'http://localhost:5000';
-
+	
 	let response = init(); 
 	let goToRegister = false;
 	let goToLogin = false;

@@ -14,7 +14,7 @@
 
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     axios.defaults.headers.post['Content-Type'] = 'application/json';
-
+ 
     let boards = getWhiteBoards();
 
     async function getWhiteBoards(){
